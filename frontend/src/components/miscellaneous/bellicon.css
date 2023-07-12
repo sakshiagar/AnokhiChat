@@ -1,0 +1,26 @@
+.bell-icon {
+    /* Define the initial styles for the bell icon */
+    font-size: 2xl;
+    margin: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.bell-icon.active {
+    /* Define the styles for the active state */
+    color: #d40b0b;
+    transform: scale(1.2);
+    /* Increase the scale of the icon */
+}
+
+/* Styles for the notification indicator */
+.bell-icon.active::after {
+    content: '';
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    width: 1rem;
+    height: 1rem;
+    background-color: #c90909;
+    /* Use the same color as the bell icon */
+    border-radius: 50%;
+}
