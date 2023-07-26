@@ -105,9 +105,15 @@ const io = require("socket.io")(server, {
 
 io.on("connection", (socket) => {
   console.log("Connected to socket.io");
+
   socket.on("setup", (userData) => {
-    socket.join(userData._id);
-    socket.emit("connected");
+    if (userData && userData._id) {
+      socket.join(userData._id);
+      socket.emit("connected");
+    } else {
+      // Handle the case when userData or userData._id is missing
+      socket.emit("setup_error", "Invalid user data");
+    }
   });
 
   socket.on("join chat", (room) => {

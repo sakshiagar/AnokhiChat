@@ -11,33 +11,33 @@ const ChatProvider = ({ children }) => {
 
   const history = useHistory();
 
-  
   useEffect(() => {
     const fetchUserData = async () => {
-      const userInfo = await JSON.parse(localStorage.getItem("userInfo"));
-      setUser(userInfo);
-      if (!userInfo) {
-        history("/");
+      try {
+        const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+        setUser(userInfo);
+        if (!userInfo) {
+          history.push("/"); // Use history.push() instead of history("/")
+        }
+      } catch (error) {
+        // Handle the error (e.g., set default user data or show an error message)
+        console.error("Error parsing user data:", error);
       }
     };
     fetchUserData();
-  }, [history])
-
-
-  
+  }, [history]);
 
   return (
     <ChatContext.Provider
       value={{
-         user,
+        user,
         setUser,
         selectedChat,
         setSelectedChat,
-         chats,
+        chats,
         setChats,
         notification,
         setNotification,
-        
       }}
     >
       {children}

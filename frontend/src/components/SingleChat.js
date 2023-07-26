@@ -2,25 +2,32 @@ import { FormControl } from "@chakra-ui/form-control";
 import { Input } from "@chakra-ui/input";
 import { Box, Text } from "@chakra-ui/layout";
 import "./styles.css";
-import { IconButton, Spinner, useToast } from "@chakra-ui/react";
+import {
+  IconButton,
+  Spinner,
+  useToast,
+ 
+  InputGroup,
+  InputRightElement,
+  Flex,
+} from "@chakra-ui/react";
 import { getSender, getSenderFull } from "../config/ChatLogics";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { ArrowBackIcon } from "@chakra-ui/icons";
 import ProfileModal from "./miscellaneous/ProfileModal";
 import ScrollableChat from "./ScrollableChat";
 import Lottie from "react-lottie";
 import animationData from "../animations/typing.json";
-import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faMicrophone } from '@fortawesome/free-solid-svg-icons';
-
-
+import SpeechRecognition, {
+  useSpeechRecognition,
+} from "react-speech-recognition"; // Import SpeechRecognition directly
+import { IoMdMicrophone, IoIosSend } from "react-icons/io";
 
 import io from "socket.io-client";
 import UpdateGroupChatModal from "./miscellaneous/UpdateGroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
-const ENDPOINT = "http://localhost:5000"; // "https://talk-a-tive.herokuapp.com"; -> After deployment
+const ENDPOINT = "http://localhost:5000";
 var socket, selectedChatCompare;
 
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
@@ -31,6 +38,45 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const [typing, setTyping] = useState(false);
   const [istyping, setIsTyping] = useState(false);
   const toast = useToast();
+  const [listening, setListening] = useState(false);
+  const { transcript, resetTranscript } = useSpeechRecognition();
+
+ useEffect(() => {
+   if (!SpeechRecognition.browserSupportsSpeechRecognition()) {
+     console.error("Speech recognition is not supported in this browser.");
+   }
+ }, []);
+
+ useEffect(() => {
+   // Do something with the 'transcript' value when it changes (e.g., handleVoiceInput())
+   handleVoiceInput(transcript);
+ }, [transcript]);
+
+ const handleMicClick = () => {
+   if (listening) {
+     SpeechRecognition.stopListening();
+   } else {
+     SpeechRecognition.startListening({ continuous: true, language: "en-IN" });
+   }
+   setListening(!listening);
+ };
+
+ const handleVoiceInput = (text) => {
+   // Do something with the 'text' received from speech recognition
+   // For example, update the input field or send the message
+   setNewMessage(text);
+ };
+
+  // Create a ref for the messages container
+  const messagesContainerRef = useRef(null);
+
+  // Scroll to the bottom of the messages container when new messages are added
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop =
+        messagesContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const defaultOptions = {
     loop: true,
@@ -42,22 +88,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   };
   const { selectedChat, setSelectedChat, user, notification, setNotification } =
     ChatState();
-const { transcript, resetTranscript } = useSpeechRecognition();
 
-  const startListening = () => {
-    SpeechRecognition.startListening();
-  };
-
-  const stopListening = () => {
-    SpeechRecognition.stopListening();
-  };
-
-  const handleSpeechRecognition = () => {
-    if (transcript) {
-      setNewMessage(transcript);
-      resetTranscript();
-    }
-  };
   const fetchMessages = async () => {
     if (!selectedChat) return;
 
@@ -90,8 +121,9 @@ const { transcript, resetTranscript } = useSpeechRecognition();
     }
   };
 
-  const sendMessage = async (event) => {
-    if (event.key === "Enter" && newMessage) {
+  const sendMessage = async () => {
+    // Remove the event parameter
+    if (newMessage) {
       socket.emit("stop typing", selectedChat._id);
       try {
         const config = {
@@ -101,6 +133,7 @@ const { transcript, resetTranscript } = useSpeechRecognition();
           },
         };
         setNewMessage("");
+        resetTranscript();
         const { data } = await axios.post(
           "/api/message",
           {
@@ -113,7 +146,7 @@ const { transcript, resetTranscript } = useSpeechRecognition();
         setMessages([...messages, data]);
       } catch (error) {
         toast({
-          title: "Error Occured!",
+          title: "Error Occurred!",
           description: "Failed to send the Message",
           status: "error",
           duration: 5000,
@@ -123,6 +156,7 @@ const { transcript, resetTranscript } = useSpeechRecognition();
       }
     }
   };
+
 
   useEffect(() => {
     socket = io(ENDPOINT);
@@ -149,7 +183,7 @@ const { transcript, resetTranscript } = useSpeechRecognition();
       ) {
         if (!notification.includes(newMessageRecieved)) {
           setNotification([newMessageRecieved, ...notification]);
-          setFetchAgain(!fetchAgain);//to update the chats 
+          setFetchAgain(!fetchAgain);
         }
       } else {
         setMessages([...messages, newMessageRecieved]);
@@ -178,6 +212,16 @@ const { transcript, resetTranscript } = useSpeechRecognition();
     }, timerLength);
   };
 
+
+  // const handleSendMessage = () => {
+  //   // Handle sending the message (e.g., with a socket.emit() or API call)
+  //   // using the 'newMessage' state
+  //   console.log("Sending message:", newMessage);
+  //   // Clear the input field or perform any other required actions
+  //   setNewMessage("");
+  //   // Reset the transcript after sending the message
+  //   resetTranscript();
+  // };
   return (
     <>
       {selectedChat ? (
@@ -223,9 +267,10 @@ const { transcript, resetTranscript } = useSpeechRecognition();
             p={3}
             bg="#E8E8E8"
             w="100%"
-            h="100%"
+            h="900px"
             borderRadius="lg"
-            overflowY="hidden"
+            overflowY="scroll"
+            position="relative"
           >
             {loading ? (
               <Spinner
@@ -236,7 +281,14 @@ const { transcript, resetTranscript } = useSpeechRecognition();
                 margin="auto"
               />
             ) : (
-              <div className="messages">
+              <div
+                className="messages"
+                style={{
+                  overflowY: "auto",
+                  maxHeight: "calc(100% - 3rem)", // Adjust the height for input
+                }}
+                ref={messagesContainerRef} // Ref for scrolling
+              >
                 <ScrollableChat messages={messages} />
               </div>
             )}
@@ -246,6 +298,13 @@ const { transcript, resetTranscript } = useSpeechRecognition();
               id="first-name"
               isRequired
               mt={3}
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                marginBottom: "1rem", // Margin to prevent overlapping
+              }}
             >
               {istyping ? (
                 <div>
@@ -259,36 +318,37 @@ const { transcript, resetTranscript } = useSpeechRecognition();
               ) : (
                 <></>
               )}
-              {/* <Input
-                variant="filled"
-                bg="#E0E0E0"
-                placeholder="Enter a message and then press enter.."
-                value={newMessage}
-                onChange={typingHandler}
-                
-              />
-              
-            </FormControl> */}
-            <Input
-              variant="filled"
-              bg="#E0E0E0"
-              placeholder="Enter a message.."
-              value={newMessage}
-              onChange={typingHandler}
-              // Add these props for speech recognition
-              readOnly
-              onClick={startListening}
-            />
-            <FontAwesomeIcon
-              aria-label="Microphone"
-              icon={faMicrophone}
-              onClick={handleSpeechRecognition}
-              onMouseDown={startListening}
-              onMouseUp={stopListening}
-              onTouchStart={startListening}
-              onTouchEnd={stopListening}
-            />
-          </FormControl>
+              <InputGroup>
+                <Input
+                  variant="filled"
+                  bg="#E0E0E0"
+                  placeholder="Enter a message.."
+                  value={newMessage}
+                  onChange={typingHandler}
+                  pr="4.5rem" // Add right padding to accommodate the microphone icon
+                />
+                <InputRightElement width="9rem">
+                  {" "}
+                  {/* Increase width to accommodate both icons */}
+                  <Flex align="center">
+                    <IconButton
+                      icon={<IoMdMicrophone />}
+                      aria-label="Microphone"
+                      size="sm"
+                      onClick={handleMicClick}
+                      color={listening ? "red.500" : "gray.500"}
+                    />
+                    <IconButton
+                      icon={<IoIosSend />}
+                      aria-label="Send"
+                      size="sm"
+                      onClick={sendMessage}
+                      ml={2} // Add margin to separate the two icons
+                    />
+                  </Flex>
+                </InputRightElement>
+              </InputGroup>
+            </FormControl>
           </Box>
         </>
       ) : (
