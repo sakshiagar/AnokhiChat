@@ -98,6 +98,7 @@ const server = app.listen(
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
+    // origin: "https://lambent-marshmallow-2e8ebb.netlify.app/",
     origin: "https://lambent-marshmallow-2e8ebb.netlify.app/",
     // credentials: true,
   },
